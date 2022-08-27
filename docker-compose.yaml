@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  # mTLS server side
+  mtls-server:
+    container_name: server
+    hostname: server
+    build: 
+      context: server
+      dockerfile: Dockerfile
+      args:
+        - IMAGE_VERSION=${IMAGE_VERSION}
+      target: prod
+
+    environment:
+      - ALLOWED_CERTIFICATE_FINGERPRINT=all
+      - PROXY_PASS=http://httpbin:80
+    volumes:
+      - ./certs:/etc/nginx/conf.d/certs
+    ports:
+      - 443:443
+
+  # mTLS server side
+  mtls-client:
+    container_name: client
+    hostname: client
+    build: 
+      context: client
+      dockerfile: Dockerfile
+      args:
+        - IMAGE_VERSION=${IMAGE_VERSION}
+      target: prod
+
+    environment:
+      - PROXY_PASS=https://server:443
+      - PROXY_SSL_VERIFY=off # on | off
+    volumes:
+      - ./certs:/etc/nginx/conf.d/certs
+    ports:
+      - 9090:80 
+
+  # Application to expose http
+  httpbin:
+    image: kennethreitz/httpbin
+    hostname: httpbin
+    container_name: httpbin
+    ports:
+      - 8000:80          
+
+networks: 
+  default: 
+    name: mtls-shared
